@@ -1,15 +1,46 @@
 #include <gtest/gtest.h>
+#include <Decoder.hpp>
 
-// Function to test
-int add(int a, int b) {
-    return a + b;
+TEST(DecoderTest, DemoDecodeTest) {
+    StreamSim::Core::DemoDecoder decoder;
+    StreamSim::Core::ByteUndecodedFrame undecodedFrame;
+    undecodedFrame.data = 4;
+    StreamSim::Core::ByteFrameElement decodedFrame;
+    decoder.DecodeFrameData(undecodedFrame, decodedFrame);
+    EXPECT_EQ(decodedFrame.data, 2);
+
+    undecodedFrame.data = 3;
+    decoder.DecodeFrameData(undecodedFrame, decodedFrame);
+    EXPECT_EQ(decodedFrame.data, 1);
 }
 
-// Test cases
-TEST(AdditionTest, PositiveNumbers) {
-    EXPECT_EQ(add(1, 2), 3);
-}
+TEST(DecoderTest, FrameElementDecodeServiceTest) {
+    StreamSim::Core::AsyncByteFrameQueue decodeQueue;
+    StreamSim::Core::AsyncByteFrameQueue renderQueue;
+    StreamSim::Core::FrameElementDecodeService decodeService(&decodeQueue, &renderQueue);
+    StreamSim::Core::ByteUndecodedFrame undecodedFrame;
+    undecodedFrame.data = 4;
+    decodeQueue.WriteSync(undecodedFrame);
+    undecodedFrame.data = 6;
+    decodeQueue.WriteSync(undecodedFrame);
+    undecodedFrame.data = 8;
+    decodeQueue.WriteSync(undecodedFrame);
+    undecodedFrame.data = 10;
+    decodeQueue.WriteSync(undecodedFrame);
 
-TEST(AdditionTest, NegativeNumbers) {
-    EXPECT_EQ(add(-1, -1), -2);
+    decodeService.Run();
+    decodeService.Shutdown();
+
+    EXPECT_TRUE(decodeQueue.IsEmpty());
+    EXPECT_TRUE(renderQueue.NumElements() == 4);
+
+    StreamSim::Core::ByteFrameElement decodedFrame;
+    EXPECT_TRUE(renderQueue.ReadSync(decodedFrame));
+    EXPECT_EQ(decodedFrame.data, 2);
+    EXPECT_TRUE(renderQueue.ReadSync(decodedFrame));
+    EXPECT_EQ(decodedFrame.data, 3);
+    EXPECT_TRUE(renderQueue.ReadSync(decodedFrame));
+    EXPECT_EQ(decodedFrame.data, 4);
+    EXPECT_TRUE(renderQueue.ReadSync(decodedFrame));
+    EXPECT_EQ(decodedFrame.data, 5);
 }
