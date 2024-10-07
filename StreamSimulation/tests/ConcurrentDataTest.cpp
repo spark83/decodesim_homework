@@ -1,36 +1,44 @@
 #include <gtest/gtest.h>
 #include "ConcurrentData.hpp"
 
-TEST(ConcurrentDataBufferTest, SingleThreadedWriteRead) {
+TEST(ConcurrentDataTest, SingleThreadedWriteRead) {
     StreamSim::Core::ConcurrentBufferQueue<int, 5> buffer;
     int value;
 
     buffer.WriteSync(10);
     EXPECT_EQ(buffer.NumElements(), 1);
 
-    bool result = buffer.ReadSync(value);
-    EXPECT_TRUE(result);
+    EXPECT_TRUE(buffer.ReadSync(value));
     EXPECT_EQ(value, 10);
     EXPECT_EQ(buffer.NumElements(), 0);
 }
 
-TEST(ConcurrentDataBufferTest, SingleThread_WriteReadSync) {
+TEST(ConcurrentDataTest, TryReadFromEmptyBufferWithTimerWait) {
     StreamSim::Core::ConcurrentBufferQueue<int, 5> buffer;
-    int data;
+    int value;
 
-    // Write data to the buffer
-    buffer.WriteSync(42);
-    EXPECT_EQ(buffer.NumElements(), 1);
-
-    // Read data from the buffer
-    bool result = buffer.ReadSync(data);
-    EXPECT_TRUE(result);
-    EXPECT_EQ(data, 42);
-    EXPECT_EQ(buffer.NumElements(), 0);
+    // Should wait 2 second and fail.
+    EXPECT_FALSE(buffer.ReadSync(value));
 }
 
-TEST(ConcurrentDataBufferTest, BufferFullCondition) {
-    StreamSim::Core::ConcurrentBufferQueue<int, 2> buffer;
+TEST(ConcurrentDataTest, TryReadFromEmptyBufferWithoutTimerWait) {
+    StreamSim::Core::ConcurrentBufferQueue<int, 5> buffer;
+    int value;
+
+    std::thread writer([&buffer]() {
+        buffer.WriteSync(3);
+        buffer.WriteSync(4);
+        buffer.WriteSync(5);
+    });
+
+    EXPECT_TRUE(buffer.ReadSync(value));
+    writer.join();
+
+    EXPECT_EQ(buffer.NumElements(), 2);
+}
+
+TEST(ConcurrentDataTest, BufferFullCondition) {
+    StreamSim::Core::ConcurrentBufferQueue<int, 2, 0> buffer;
 
     buffer.WriteSync(1);
     buffer.WriteSync(2);
@@ -54,7 +62,7 @@ TEST(ConcurrentDataBufferTest, BufferFullCondition) {
     EXPECT_EQ(buffer.NumElements(), 2);
 }
 
-TEST(ConcurrentDataBufferTest, SingleThread_ReadAsyncWhenEmpty) {
+TEST(ConcurrentDataTest, SingleThread_ReadAsyncWhenEmpty) {
     StreamSim::Core::ConcurrentBufferQueue<int, 5> buffer;
     int data;
 
@@ -63,7 +71,7 @@ TEST(ConcurrentDataBufferTest, SingleThread_ReadAsyncWhenEmpty) {
     EXPECT_FALSE(result);
 }
 
-TEST(ConcurrentDataBufferTest, SingleThread_ReadAsyncWhenDataAvailable) {
+TEST(ConcurrentDataTest, SingleThread_ReadAsyncWhenDataAvailable) {
     StreamSim::Core::ConcurrentBufferQueue<int, 5> buffer;
     int data;
 
@@ -76,7 +84,7 @@ TEST(ConcurrentDataBufferTest, SingleThread_ReadAsyncWhenDataAvailable) {
     EXPECT_EQ(data, 100);
 }
 
-TEST(ConcurrentDataBufferTest, ConcurrentWriteRead) {
+TEST(ConcurrentDataTest, ConcurrentWriteRead) {
     StreamSim::Core::ConcurrentBufferQueue<int, 1000> buffer;
 
     const int num_items = 100;
@@ -112,7 +120,7 @@ TEST(ConcurrentDataBufferTest, ConcurrentWriteRead) {
     EXPECT_EQ(written_values, read_values);
 }
 
-TEST(ConcurrentDataBufferTest, MultipleReadersWriters) {
+TEST(ConcurrentDataTest, MultipleReadersWriters) {
     StreamSim::Core::ConcurrentBufferQueue<int, 100> buffer;
 
     const int num_writers = 3;
@@ -158,7 +166,7 @@ TEST(ConcurrentDataBufferTest, MultipleReadersWriters) {
     EXPECT_EQ(total_read.load(), total_written.load());
 }
 
-TEST(ConcurrentDataBufferTest, MultiThread_ReadBlocksWhenEmpty) {
+TEST(ConcurrentDataTest, MultiThread_ReadBlocksWhenEmpty) {
     StreamSim::Core::ConcurrentBufferQueue<int, 2> buffer;
     std::atomic<bool> readBlocked{false};
     int data;

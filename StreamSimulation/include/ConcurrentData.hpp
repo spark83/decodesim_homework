@@ -77,9 +77,15 @@ public:
 
     bool WriteSync(const T& data) {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_fullCv.wait_for(lock, std::chrono::seconds(DefaultWaitSec), [this] {
-            return m_count < N;
-        });
+        if constexpr (DefaultWaitSec == 0) {
+            m_fullCv.wait(lock, [this] {
+                return m_count < N;
+            });
+        } else {
+            m_fullCv.wait_for(lock, std::chrono::seconds(DefaultWaitSec), [this] {
+                return m_count < N;
+            });
+        }
 
         if (m_count >= N) {
             return false;
@@ -110,9 +116,15 @@ public:
 
     bool ReadSync(T& data) {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_emptyCv.wait_for(lock, std::chrono::seconds(DefaultWaitSec), [this] {
-            return m_count > 0;
-        });
+        if constexpr (DefaultWaitSec == 0) {
+            m_emptyCv.wait(lock, [this] {
+                return m_count > 0;
+            });
+        } else {
+            m_emptyCv.wait_for(lock, std::chrono::seconds(DefaultWaitSec), [this] {
+                return m_count > 0;
+            });
+        }
 
         if (m_count == 0) {
             return false;
