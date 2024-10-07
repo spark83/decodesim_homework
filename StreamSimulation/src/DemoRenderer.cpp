@@ -28,6 +28,13 @@ namespace StreamSim::Render {
                 }
                 PrintByteFrameElement(data);
             }
+
+            while (!m_readBuffer->IsEmpty()) {
+                Core::ByteFrameElement data;
+                if (m_readBuffer->ReadSync(data)) {
+                    PrintByteFrameElement(data);
+                }
+            }
         });
     }
 

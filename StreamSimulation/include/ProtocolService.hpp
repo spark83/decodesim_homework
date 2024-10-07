@@ -47,6 +47,14 @@ public:
     bool Run() override;
     bool Shutdown() override;
 
+    std::size_t GetNumDecodeBufferElements() const {
+        return m_decodableBuffer->NumElements();
+    }
+
+    std::size_t GetNumDecodedBufferElements() const {
+        return m_decodedBuffer->NumElements();
+    }
+
     DemoProtocolService(const DemoProtocolService&) = delete;
 };
 

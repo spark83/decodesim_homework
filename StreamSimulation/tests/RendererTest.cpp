@@ -1,15 +1,28 @@
 #include <gtest/gtest.h>
+#include <StreamRenderer.hpp>
 
-// Function to test
-int add(int a, int b) {
-    return a + b;
-}
+TEST(ProtocolServiceTest, DemoProtocolServiceTest) {
+    testing::internal::CaptureStdout();
+    StreamSim::Core::AsyncByteFrameQueue bufferQueue;
+    StreamSim::Render::FrameElementRenderHandler renderHandler(&bufferQueue);
 
-// Test cases
-TEST(AdditionTest, PositiveNumbers) {
-    EXPECT_EQ(add(1, 2), 3);
-}
+    StreamSim::Core::ByteFrameElement frame;
+    renderHandler.Run();
 
-TEST(AdditionTest, NegativeNumbers) {
-    EXPECT_EQ(add(-1, -1), -2);
+    frame.data = 'a';
+    bufferQueue.WriteSync(frame);
+    frame.data = 'b';
+    bufferQueue.WriteSync(frame);
+    frame.data = 'c';
+    bufferQueue.WriteSync(frame);
+    frame.data = 'd';
+    bufferQueue.WriteSync(frame);
+
+    renderHandler.Shutdown();
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    std::string output = testing::internal::GetCapturedStdout();
+
+    EXPECT_EQ("a\nb\nc\nd\n", output);
 }

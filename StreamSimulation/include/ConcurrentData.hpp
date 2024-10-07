@@ -58,6 +58,7 @@ public:
     }
 };
 
+// Buffer queue that has fixed size buffer which holds elements.
 template <typename T, std::size_t N, uint32_t DefaultWaitSec = 2>
 class ConcurrentBufferQueue {
 private:

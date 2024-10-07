@@ -1,15 +1,11 @@
 #include <gtest/gtest.h>
+#include <ProtocolService.hpp>
 
-// Function to test
-int add(int a, int b) {
-    return a + b;
-}
+TEST(ProtocolServiceTest, DemoProtocolServiceTest) {
+    StreamSim::Net::DemoProtocolService service(4, 1);
+    service.Run();
+    service.Shutdown();
 
-// Test cases
-TEST(AdditionTest, PositiveNumbers) {
-    EXPECT_EQ(add(1, 2), 3);
-}
-
-TEST(AdditionTest, NegativeNumbers) {
-    EXPECT_EQ(add(-1, -1), -2);
+    EXPECT_EQ(service.GetNumDecodeBufferElements(), 0);
+    EXPECT_EQ(service.GetNumDecodedBufferElements(), 0);
 }
