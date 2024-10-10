@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.10)
 # Set the project name and version
 project(FrameProcess VERSION 1.0)
 
+if(WIN32)
+add_subdirectory(googletest)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd") 
+else()
 # Fetch GoogleTest
 include(FetchContent)
 FetchContent_Declare(
@@ -11,6 +15,7 @@ FetchContent_Declare(
   GIT_TAG        release-1.12.1
 )
 FetchContent_MakeAvailable(googletest)
+endif()
 
 enable_testing()
 
