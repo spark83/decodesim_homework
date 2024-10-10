@@ -11,53 +11,6 @@
 
 namespace StreamSim::Core {
 
-template <typename T, std::size_t N>
-class ConcurrentBuffer {
-private:
-    std::array<T, N> m_dataBuffer;
-    mutable std::shared_mutex m_mutex;
-    std::size_t m_numElements = 0;
-
-public:
-    ConcurrentBuffer() = default;
-
-    bool WritePush(const T& data) {
-        std::lock_guard<std::shared_mutex> lock(m_mutex);
-        if (m_numElements == N) {
-            return false;
-        }
-        
-        m_dataBuffer[m_numElements++] = data;
-    }
-
-    void ReadAll(std::array<T, N>& buffer, std::size_t& numElements) {
-        std::shared_lock<std::shared_mutex> lock(m_mutex);
-        std::memcpy(buffer, m_dataBuffer, sizeof(m_dataBuffer));
-        numElements = m_numElements;
-        m_numElements = 0;
-    }
-
-    bool Read(std::size_t index, T& data) {
-        if (index >= N) {
-            return false;
-        }
-
-        std::shared_lock<std::shared_mutex> lock(m_mutex);
-        data = m_dataBuffer[index];
-        return true;
-    }
-
-    bool IsFull() const {
-        std::shared_lock<std::shared_mutex> lock(m_mutex);
-        return m_numElements == N;
-    }
-
-    std::size_t GetNumElements() const {
-        std::shared_lock<std::shared_mutex> lock(m_mutex);
-        return m_numElements;
-    }
-};
-
 // Buffer queue that has fixed size buffer which holds elements.
 template <typename T, std::size_t N, uint32_t DefaultWaitSec = 2>
 class ConcurrentBufferQueue {
