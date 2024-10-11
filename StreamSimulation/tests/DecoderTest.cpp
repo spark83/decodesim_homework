@@ -17,7 +17,7 @@ TEST(DecoderTest, DemoDecodeTest) {
 TEST(DecoderTest, FrameElementDecodeServiceTest) {
     StreamSim::Core::AsyncByteFrameQueue decodeQueue;
     StreamSim::Core::AsyncByteFrameQueue renderQueue;
-    StreamSim::Core::FrameElementDecodeService decodeService(&decodeQueue, &renderQueue);
+    StreamSim::Core::FrameElementQueueDecodeService decodeService(&decodeQueue, &renderQueue);
     StreamSim::Core::ByteUndecodedFrame undecodedFrame;
     undecodedFrame.data = 4;
     decodeQueue.WriteSync(undecodedFrame);

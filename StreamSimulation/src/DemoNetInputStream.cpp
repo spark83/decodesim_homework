@@ -1,4 +1,3 @@
-#define NDEBUG
 #include <cassert>
 
 #include "NetInputStream.hpp"

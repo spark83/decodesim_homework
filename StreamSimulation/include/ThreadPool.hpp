@@ -36,22 +36,21 @@ private:
 
     void Worker() {
         while (true) {
-            Func task;
-            {
-                std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait(lock, [this] { return !m_tasks.empty() || !m_isRunning; });
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait(lock, [this] { return !m_tasks.empty() || !m_isRunning; });
 
-                if (!m_isRunning && m_tasks.empty())
-                    return;
+            if (!m_isRunning && m_tasks.empty())
+                return;
 
-                task = m_tasks.front();
-                m_tasks.pop();
+            Func task = m_tasks.front();
+            m_tasks.pop();
 
-                while (!m_tasksToBeAdded.empty()) {
-                    m_tasks.push(m_tasksToBeAdded.front());
-                    m_tasksToBeAdded.pop();
-                }
+            while (!m_tasksToBeAdded.empty()) {
+                m_tasks.push(m_tasksToBeAdded.front());
+                m_tasksToBeAdded.pop();
             }
+            lock.unlock();
+            
             task();
         }
     }

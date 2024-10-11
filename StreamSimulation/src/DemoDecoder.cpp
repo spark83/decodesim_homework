@@ -1,5 +1,5 @@
-#include <chrono>
 #include <cassert>
+#include <chrono>
 #include <iostream>
 #include "Decoder.hpp"
 
@@ -8,6 +8,24 @@ namespace {
 }
 
 namespace StreamSim::Core {
+
+DecoderTask::DecoderTask(const Core::ByteUndecodedFrame& frame,
+                         Decoder* decoder,
+                         Core::AsyncByteFrameQueue* renderBufferQueue)
+: m_frame(frame)
+, m_decoder(decoder)
+, m_renderBufferQueue(renderBufferQueue) {
+    assert(decoder != nullptr);
+    assert(renderBufferQueue != nullptr);
+}
+
+DecoderTask::~DecoderTask() {}
+
+void DecoderTask::operator()() {
+    Core::ByteFrameElement decoded;
+    m_decoder->DecodeFrameData(m_frame, decoded);
+    m_renderBufferQueue->WriteSync(decoded);
+}
 
 DemoDecoder::DemoDecoder() {}
 
@@ -19,7 +37,7 @@ void DemoDecoder::DecodeFrameData(const Core::ByteUndecodedFrame& frame, Core::B
     decoded.data = frame.data / 2;
 }
 
-FrameElementDecodeService::FrameElementDecodeService(Core::AsyncByteFrameQueue* decodeQueue, Core::AsyncByteFrameQueue* renderQueue)
+FrameElementQueueDecodeService::FrameElementQueueDecodeService(Core::AsyncByteFrameQueue* decodeQueue, Core::AsyncByteFrameQueue* renderQueue)
 : m_decodeBufferQueue(decodeQueue)
 , m_renderBufferQueue(renderQueue)
 , m_isRunning(false) {
@@ -27,11 +45,11 @@ FrameElementDecodeService::FrameElementDecodeService(Core::AsyncByteFrameQueue* 
     assert(m_renderBufferQueue != nullptr);
 }
 
-FrameElementDecodeService::~FrameElementDecodeService() {
+FrameElementQueueDecodeService::~FrameElementQueueDecodeService() {
     Shutdown();
 }
 
-void FrameElementDecodeService::Run() {
+void FrameElementQueueDecodeService::Run() {
     m_isRunning.store(true, std::memory_order_release);
 
     for (std::size_t i = 0; i < MAX_NUM_DECODER_THREADS; ++i) {
@@ -57,7 +75,7 @@ void FrameElementDecodeService::Run() {
     }
 }
 
-void FrameElementDecodeService::Shutdown() {
+void FrameElementQueueDecodeService::Shutdown() {
     m_isRunning.store(false, std::memory_order_release);
     
     for_each(m_decodeThreads.begin(), m_decodeThreads.end(), [] (std::thread& th) {
@@ -65,6 +83,15 @@ void FrameElementDecodeService::Shutdown() {
             th.join();
         }
     });
+}
+
+FrameElementPoolDecoder::FrameElementPoolDecoder(Core::AsyncByteFrameQueue* renderQueue)
+: m_renderBufferQueue(renderQueue) {}
+
+FrameElementPoolDecoder::~FrameElementPoolDecoder() {}
+
+void FrameElementPoolDecoder::OnInputStreamData(const Core::ByteUndecodedFrame& data) {
+    m_decodePool.Enqueue(DecoderTask(data, &m_mainDecoder, m_renderBufferQueue));
 }
 
 }

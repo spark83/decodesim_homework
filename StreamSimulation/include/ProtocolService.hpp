@@ -20,7 +20,7 @@ public:
     virtual bool Shutdown() = 0;
 };
 
-class DemoProtocolService : public ProtocolService {
+class DemoProtocolServiceQueued : public ProtocolService {
 private:
     // This buffer data is created once and will be reused throughout the lifetime of the application
     std::unique_ptr<Core::AsyncByteFrameQueue> m_decodableBuffer;
@@ -35,14 +35,14 @@ private:
     DemoNetInputStreamHandler m_inputStreamHandler;
     
     // Decode service.
-    Core::FrameElementDecodeService m_decodeService;
+    Core::FrameElementQueueDecodeService m_decodeService;
 
     // Rendering service.
     Render::FrameElementRenderHandler m_renderer;
     
 public:
-    DemoProtocolService(std::size_t numThreads, uint32_t runTimeSec);
-    ~DemoProtocolService() override;
+    DemoProtocolServiceQueued(std::size_t numThreads, uint32_t runTimeSec);
+    ~DemoProtocolServiceQueued() override;
 
     bool Run() override;
     bool Shutdown() override;
@@ -55,7 +55,36 @@ public:
         return m_decodedBuffer->NumElements();
     }
 
-    DemoProtocolService(const DemoProtocolService&) = delete;
+    DemoProtocolServiceQueued(const DemoProtocolServiceQueued&) = delete;
+};
+
+class DemoProtocolServicePooled : public ProtocolService {
+private:
+    // This buffer data is created once and will be reused throughout the lifetime of the application
+    std::unique_ptr<Core::AsyncByteFrameQueue> m_decodedBuffer;
+
+    // Simulated thread with incoming streaming data which gets pushed into decodable buffer.
+    std::size_t m_numIncomingDataThreads;
+    uint32_t m_threadRunTime;
+    std::vector<std::thread> m_incomingDataThreads;
+
+    Core::FrameElementPoolDecoder m_poolDecoder;
+
+    // Rendering service.
+    Render::FrameElementRenderHandler m_renderer;
+
+public:
+    DemoProtocolServicePooled(std::size_t numThreads, uint32_t runTimeSec);
+    ~DemoProtocolServicePooled() override;
+
+    bool Run() override;
+    bool Shutdown() override;
+
+    std::size_t GetNumDecodedBufferElements() const {
+        return m_decodedBuffer->NumElements();
+    }
+
+    DemoProtocolServicePooled(const DemoProtocolServicePooled&) = delete;
 };
 
 }

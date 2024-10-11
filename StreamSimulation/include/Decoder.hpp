@@ -5,6 +5,7 @@
 #include "ConcurrentData.hpp"
 #include "FrameData.hpp"
 #include "ThreadPool.hpp"
+#include "NetInputStream.hpp"
 
 namespace StreamSim::Core {
 
@@ -16,6 +17,21 @@ public:
     virtual ~Decoder() = default;
 
     virtual void DecodeFrameData(const Core::ByteUndecodedFrame& frame, Core::ByteFrameElement& decoded) = 0;
+};
+
+class DecoderTask {
+private:
+    Core::ByteUndecodedFrame m_frame;
+    Decoder* m_decoder;
+    Core::AsyncByteFrameQueue* m_renderBufferQueue;
+
+public:
+    DecoderTask(const Core::ByteUndecodedFrame& frame,
+                Decoder* decoder,
+                Core::AsyncByteFrameQueue* renderBufferQueue);
+    ~DecoderTask();
+
+    void operator()();
 };
 
 // Upon doing some research, when it comes to decoding streaming video, there is an I, P, and B frame types
@@ -36,7 +52,7 @@ public:
 // There will be multiple threads that are available and performs the task
 // In a real world scenario, there should be a thread pool that can be used for
 // decoding task, but for this task, multiple thread that are already created will be used.
-class FrameElementDecodeService {
+class FrameElementQueueDecodeService {
 private:
     std::array<std::thread, MAX_NUM_DECODER_THREADS> m_decodeThreads;
 
@@ -48,11 +64,24 @@ private:
     DemoDecoder m_mainDecoder;
 
 public:
-    FrameElementDecodeService(Core::AsyncByteFrameQueue* decodeQueue, Core::AsyncByteFrameQueue* renderQueue);
-    ~FrameElementDecodeService();
+    FrameElementQueueDecodeService(Core::AsyncByteFrameQueue* decodeQueue, Core::AsyncByteFrameQueue* renderQueue);
+    ~FrameElementQueueDecodeService();
 
     void Run();
     void Shutdown();
+};
+
+class FrameElementPoolDecoder : public Net::NetInputStreamHandler {
+private:
+    Core::SimpleThreadPool<DecoderTask, MAX_NUM_DECODER_THREADS> m_decodePool;
+    Core::AsyncByteFrameQueue* m_renderBufferQueue;
+    DemoDecoder m_mainDecoder;
+
+public:
+    FrameElementPoolDecoder(Core::AsyncByteFrameQueue* renderQueue);
+    ~FrameElementPoolDecoder();
+
+    void OnInputStreamData(const Core::ByteUndecodedFrame& data) override;
 };
 
 }
